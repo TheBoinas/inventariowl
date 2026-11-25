@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventário & CRIS</title>
+  <style>
+    :root {
+      --bg: #11141b;
+      --panel: #191e29;
+      --panel-2: #212836;
+      --border: #2e374a;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #16a34a;
+      --success-hover: #15803d;
+      --danger: #dc2626;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 12px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover {
+      background: #2b3446;
+    }
+
+    button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    button.cris-btn {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    button.cris-btn:hover {
+      background: var(--success-hover);
+    }
+
+    button.danger {
+      background: transparent;
+      border-color: #7f1d1d;
+      color: #fca5a5;
+    }
+
+    button.danger:hover {
+      background: #450a0a;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .cris-config {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cris-config-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 8px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+
+    .form-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .form-box.open {
+      display: block;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .field {
+      margin-bottom: 8px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .item-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .item-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .item-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .item-desc {
+      margin: 8px 0;
+      white-space: pre-line;
+      line-height: 1.4;
+      color: #e5e7eb;
+    }
+
+    .item-img {
+      max-width: 100%;
+      max-height: 120px;
+      border-radius: 6px;
+      margin-top: 6px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+    }
+
+    .item-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .status-toast {
+      position: fixed;
+      bottom: 10px;
+      left: 12px;
+      right: 12px;
+      background: #052e16;
+      border: 1px solid #16a34a;
+      color: #dcfce7;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      display: none;
+      z-index: 50;
+    }
+
+    .status-toast.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Inventário & CRIS</h1>
+    <span id="roleBadge" class="badge">Conectando...</span>
+  </div>
+
+  <div class="cris-config">
+    <div class="hint" style="margin:0;">
+      Link da sua ficha no CRIS (opcional — ao clicar em <strong>Adicionar no CRIS</strong>, copia o item e abre sua ficha se preenchido):
+    </div>
+    <div class="cris-config-row">
+      <input id="crisUrlInput" type="url" placeholder="https://crisordemparanormal.com/..." />
+      <button id="saveCrisUrlBtn" type="button">Salvar link</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabGm" class="active" type="button">Banco do Mestre</button>
+    <button id="tabPlayers" type="button">Lista dos Jogadores</button>
+  </div>
+
+  <div class="toolbar">
+    <button id="newItemBtn" class="primary" type="button">+ Novo item</button>
+    <button id="exportBtn" type="button">Exportar backup</button>
+    <button id="importBtn" type="button">Importar backup</button>
+    <input id="importFileInput" type="file" accept="application/json" style="display:none;" />
+  </div>
+
+  <div id="formBox" class="form-box">
+    <h2 id="formTitle" style="margin:0 0 8px 0; font-size:14px;">Novo item</h2>
+    <input id="editIdInput" type="hidden" />
+
+    <div class="field">
+      <label for="nameInput">Nome</label>
+      <input id="nameInput" type="text" placeholder="Ex.: Pistola / Componente Ritualístico" />
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="weightInput">Espaços / Peso</label>
+        <input id="weightInput" type="text" placeholder="Ex.: 1" />
+      </div>
+      <div class="field">
+        <label for="categoryInput">Categoria</label>
+        <select id="categoryInput">
+          <option value="0">Categoria 0</option>
+          <option value="I">Categoria I</option>
+          <option value="II">Categoria II</option>
+          <option value="III">Categoria III</option>
+          <option value="IV">Categoria IV</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="typeInput">Tipo</label>
+        <input id="typeInput" type="text" placeholder="Arma, Proteção, Geral..." />
+      </div>
+      <div class="field">
+        <label for="sharedInput">Visibilidade</label>
+        <select id="sharedInput">
+          <option value="false">Apenas Mestre</option>
+          <option value="true">Liberar para Jogadores</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="imageInput">URL da Imagem (opcional)</label>
+      <input id="imageInput" type="url" placeholder="https://..." />
+    </div>
+
+    <div class="field">
+      <label for="descInput">Descrição</label>
+      <textarea id="descInput" placeholder="Detalhes, dano, efeitos ou observações do item..."></textarea>
+    </div>
+
+    <div class="item-actions">
+      <button id="saveItemBtn" class="primary" type="button">Salvar item</button>
+      <button id="cancelFormBtn" type="button">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    Itens liberados para jogadores sincronizam na sala do Owlbear. O banco completo também fica salvo localmente neste navegador.
+  </div>
+
+  <div id="itemsList"></div>
+  <div id="toast" class="status-toast"></div>
+
+  <script type="module">
+    import OBR from "https://esm.sh/@owlbear-rodeo/sdk@3.6.1";
+
+    const METADATA_KEY = "theboinas.inventario.cris.items";
+    const LOCAL_ITEMS_KEY = "theboinas_inventario_local_items_v1";
+    const LOCAL_CRIS_URL_KEY = "theboinas_cris_sheet_url_v1";
+
+    let items = [];
+    let activeTab = "gm"; // "gm" | "players"
+    let playerRole = "GM";
+    let obrReady = false;
+
+    const el = {
+      roleBadge: document.getElementById("roleBadge"),
+      crisUrlInput: document.getElementById("crisUrlInput"),
+      saveCrisUrlBtn: document.getElementById("saveCrisUrlBtn"),
+      tabGm: document.getElementById("tabGm"),
+      tabPlayers: document.getElementById("tabPlayers"),
+      newItemBtn: document.getElementById("newItemBtn"),
+      exportBtn: document.getElementById("exportBtn"),
+      importBtn: document.getElementById("importBtn"),
+      importFileInput: document.getElementById("importFileInput"),
+      formBox: document.getElementById("formBox"),
+      formTitle: document.getElementById("formTitle"),
+      editIdInput: document.getElementById("editIdInput"),
+      nameInput: document.getElementById("nameInput"),
+      weightInput: document.getElementById("weightInput"),
+      categoryInput: document.getElementById("categoryInput"),
+      typeInput: document.getElementById("typeInput"),
+      sharedInput: document.getElementById("sharedInput"),
+      imageInput: document.getElementById("imageInput"),
+      descInput: document.getElementById("descInput"),
+      saveItemBtn: document.getElementById("saveItemBtn"),
+      cancelFormBtn: document.getElementById("cancelFormBtn"),
+      itemsList: document.getElementById("itemsList"),
+      toast: document.getElementById("toast")
+    };
+
+    function showToast(message) {
+      el.toast.textContent = message;
+      el.toast.classList.add("show");
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        el.toast.classList.remove("show");
+      }, 2800);
+
+      if (obrReady) {
+        OBR.notification.show(message).catch(() => {});
+      }
+    }
+
+    function loadLocalItems() {
+      try {
+        const raw = localStorage.getItem(LOCAL_ITEMS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveLocalItems(list) {
+      localStorage.setItem(LOCAL_ITEMS_KEY, JSON.stringify(list));
+    }
+
+    async function syncRoomSharedItems(list) {
+      if (!obrReady || playerRole !== "GM") return;
+      const sharedItems = list.filter((i) => Boolean(i.shared));
+      await OBR.room.setMetadata({
+        [METADATA_KEY]: sharedItems
+      });
+    }
+
+    async function persistItems(nextItems) {
+      items = nextItems;
+      saveLocalItems(items);
+      await syncRoomSharedItems(items);
+      render();
+    }
+
+    function formatItemForCris(item) {
+      const metaParts = [];
+      if (item.type) metaParts.push(`Tipo: ${item.type}`);
+      if (item.category) metaParts.push(`Categoria: ${item.category}`);
+      if (item.weight) metaParts.push(`Espaços: ${item.weight}`);
+
+      const lines = [`**${item.name}**`];
+      if (metaParts.length > 0) {
+        lines.push(metaParts.join(" | "));
+      }
+      if (item.description) {
+        lines.push("", item.description);
+      }
+      return lines.join("\n");
+    }
+
+    async function addItemToCris(item) {
+      const formatted = formatItemForCris(item);
+      try {
+        await navigator.clipboard.writeText(formatted);
+      } catch {
+        const area = document.createElement("textarea");
+        area.value = formatted;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+
+      const crisUrl = el.crisUrlInput.value.trim();
+      if (crisUrl) {
+        window.open(crisUrl, "_blank", "noopener,noreferrer");
+        showToast(`"${item.name}" copiado para o CRIS e ficha aberta!`);
+      } else {
+        showToast(`"${item.name}" copiado! Cole na sua ficha do CRIS.`);
+      }
+    }
+
+    function openForm(item = null) {
+      el.formBox.classList.add("open");
+      if (item) {
+        el.formTitle.textContent = "Editar item";
+        el.editIdInput.value = item.id;
+        el.nameInput.value = item.name || "";
+        el.weightInput.value = item.weight || "";
+        el.categoryInput.value = item.category || "0";
+        el.typeInput.value = item.type || "";
+        el.sharedInput.value = String(Boolean(item.shared));
+        el.imageInput.value = item.image || "";
+        el.descInput.value = item.description || "";
+      } else {
+        el.formTitle.textContent = "Novo item";
+        el.editIdInput.value = "";
+        el.nameInput.value = "";
+        el.weightInput.value = "";
+        el.categoryInput.value = "0";
+        el.typeInput.value = "";
+        el.sharedInput.value = activeTab === "players" ? "true" : "false";
+        el.imageInput.value = "";
+        el.descInput.value = "";
+      }
+      el.nameInput.focus();
+    }
+
+    function closeForm() {
+      el.formBox.classList.remove("open");
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function render() {
+      const visibleItems =
+        activeTab === "players"
+          ? items.filter((i) => Boolean(i.shared))
+          : items;
+
+      el.tabGm.classList.toggle("active", activeTab === "gm");
+      el.tabPlayers.classList.toggle("active", activeTab === "players");
+
+      const canManage = playerRole === "GM";
+      el.newItemBtn.style.display = canManage ? "inline-block" : "none";
+      el.exportBtn.style.display = canManage ? "inline-block" : "none";
+      el.importBtn.style.display = canManage ? "inline-block" : "none";
+
+      if (visibleItems.length === 0) {
+        el.itemsList.innerHTML = `<div class="hint">Nenhum item nesta aba ainda.</div>`;
+        return;
+      }
+
+      el.itemsList.innerHTML = visibleItems
+        .map((item) => {
+          const meta = [
+            item.type ? `Tipo: ${escapeHtml(item.type)}` : null,
+            item.category ? `Cat. ${escapeHtml(item.category)}` : null,
+            item.weight ? `Espaços: ${escapeHtml(item.weight)}` : null,
+            item.shared ? "Na lista dos jogadores" : "Só mestre"
+          ]
+            .filter(Boolean)
+            .join(" • ");
+
+          const imgHtml = item.image
+            ? `<img class="item-img" src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" />`
+            : "";
+
+          const gmButtons = canManage
+            ? `
+              <button type="button" data-action="toggle-share" data-id="${escapeHtml(item.id)}">
+                ${item.shared ? "Ocultar dos jogadores" : "Enviar p/ jogadores"}
+              </button>
+              <button type="button" data-action="edit" data-id="${escapeHtml(item.id)}">Editar</button>
+              <button type="button" class="danger" data-action="delete" data-id="${escapeHtml(item.id)}">Excluir</button>
+            `
+            : "";
+
+          return `
+            <div class="item-card">
+              <div class="item-header">
+                <div>
+                  <h3 class="item-title">${escapeHtml(item.name)}</h3>
+                  <div class="item-meta">${meta}</div>
+                </div>
+              </div>
+              ${item.description ? `<div class="item-desc">${escapeHtml(item.description)}</div>` : ""}
+              ${imgHtml}
+              <div class="item-actions">
+                <button type="button" class="cris-btn" data-action="add-cris" data-id="${escapeHtml(item.id)}">
+                  Adicionar no CRIS
+                </button>
+                ${gmButtons}
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    // Eventos da UI
+    el.saveCrisUrlBtn.addEventListener("click", () => {
+      localStorage.setItem(LOCAL_CRIS_URL_KEY, el.crisUrlInput.value.trim());
+      showToast("Link da ficha do CRIS salvo!");
+    });
+
+    el.tabGm.addEventListener("click", () => {
+      activeTab = "gm";
+      render();
+    });
+
+    el.tabPlayers.addEventListener("click", () => {
+      activeTab = "players";
+      render();
+    });
+
+    el.newItemBtn.addEventListener("click", () => openForm(null));
+    el.cancelFormBtn.addEventListener("click", closeForm);
+
+    el.saveItemBtn.addEventListener("click", async () => {
+      const name = el.nameInput.value.trim();
+      if (!name) {
+        showToast("Digite o nome do item antes de salvar.");
+        return;
+      }
+
+      const existingId = el.editIdInput.value;
+      const payload = {
+        id: existingId || crypto.randomUUID(),
+        name,
+        weight: el.weightInput.value.trim(),
+        category: el.categoryInput.value,
+        type: el.typeInput.value.trim(),
+        shared: el.sharedInput.value === "true",
+        image: el.imageInput.value.trim(),
+        description: el.descInput.value.trim()
+      };
+
+      const next = existingId
+        ? items.map((i) => (i.id === existingId ? payload : i))
+        : [payload, ...items];
+
+      closeForm();
+      await persistItems(next);
+      showToast(`Item "${name}" salvo!`);
+    });
+
+    el.itemsList.addEventListener("click", async (event) => {
+      const btn = event.target.closest("button[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      const item = items.find((i) => i.id === id);
+      if (!item) return;
+
+      if (action === "add-cris") {
+        await addItemToCris(item);
+      } else if (action === "edit") {
+        openForm(item);
+      } else if (action === "delete") {
+        await persistItems(items.filter((i) => i.id !== id));
+        showToast(`Item "${item.name}" removido.`);
+      } else if (action === "toggle-share") {
+        const next = items.map((i) =>
+          i.id === id ? { ...i, shared: !i.shared } : i
+        );
+        await persistItems(next);
+        showToast(
+          !item.shared
+            ? `"${item.name}" liberado para os jogadores.`
+            : `"${item.name}" removido da lista dos jogadores.`
+        );
+      }
+    });
+
+    el.exportBtn.addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(items, null, 2)], {
+        type: "application/json"
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "backup-inventario-cris.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Backup exportado!");
+    });
+
+    el.importBtn.addEventListener("click", () => {
+      el.importFileInput.click();
+    });
+
+    el.importFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) throw new Error("Formato inválido");
+        await persistItems(parsed);
+        showToast("Backup importado com sucesso!");
+      } catch {
+        showToast("Arquivo de backup inválido.");
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    // Inicialização
+    el.crisUrlInput.value = localStorage.getItem(LOCAL_CRIS_URL_KEY) || "";
+    items = loadLocalItems();
+    render();
+
+    try {
+      await OBR.onReady();
+      obrReady = true;
+      playerRole = await OBR.player.getRole();
+      el.roleBadge.textContent = playerRole === "GM" ? "Mestre (GM)" : "Jogador";
+
+      if (playerRole !== "GM") {
+        activeTab = "players";
+        const roomMeta = await OBR.room.getMetadata();
+        if (Array.isArray(roomMeta[METADATA_KEY])) {
+          items = roomMeta[METADATA_KEY];
+        }
+        OBR.room.onMetadataChange((metadata) => {
+          if (Array.isArray(metadata[METADATA_KEY])) {
+            items = metadata[METADATA_KEY];
+            render();
+          }
+        });
+      } else {
+        await syncRoomSharedItems(items);
+      }
+      render();
+    } catch {
+      el.roleBadge.textContent = "Modo standalone";
+    }
+  </script>
+</body>
+</html>
