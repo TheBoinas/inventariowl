@@ -349,8 +349,6 @@
   <div id="toast" class="status-toast"></div>
 
   <script type="module">
-    import OBR from "https://esm.sh/@owlbear-rodeo/sdk@3.6.1";
-
     const METADATA_KEY = "theboinas.inventario.cris.items";
     const LOCAL_ITEMS_KEY = "theboinas_inventario_local_items_v1";
     const LOCAL_CRIS_URL_KEY = "theboinas_cris_sheet_url_v1";
@@ -358,6 +356,7 @@
     let items = [];
     let activeTab = "gm"; // "gm" | "players"
     let playerRole = "GM";
+    let obr = null;
     let obrReady = false;
 
     const el = {
@@ -394,37 +393,46 @@
         el.toast.classList.remove("show");
       }, 2800);
 
-      if (obrReady) {
-        OBR.notification.show(message).catch(() => {});
+      if (obrReady && obr?.notification?.show) {
+        obr.notification.show(message).catch(() => {});
       }
     }
 
     function loadLocalItems() {
       try {
         const raw = localStorage.getItem(LOCAL_ITEMS_KEY);
-        return raw ? JSON.parse(raw) : [];
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
       } catch {
         return [];
       }
     }
 
     function saveLocalItems(list) {
-      localStorage.setItem(LOCAL_ITEMS_KEY, JSON.stringify(list));
+      try {
+        localStorage.setItem(LOCAL_ITEMS_KEY, JSON.stringify(list));
+      } catch (err) {
+        console.error("Erro ao salvar no localStorage:", err);
+      }
     }
 
     async function syncRoomSharedItems(list) {
-      if (!obrReady || playerRole !== "GM") return;
-      const sharedItems = list.filter((i) => Boolean(i.shared));
-      await OBR.room.setMetadata({
-        [METADATA_KEY]: sharedItems
-      });
+      if (!obrReady || playerRole !== "GM" || !obr?.room?.setMetadata) return;
+      try {
+        const sharedItems = list.filter((i) => Boolean(i.shared));
+        await obr.room.setMetadata({
+          [METADATA_KEY]: sharedItems
+        });
+      } catch (err) {
+        console.error("Erro ao sincronizar metadata da sala:", err);
+      }
     }
 
     async function persistItems(nextItems) {
       items = nextItems;
       saveLocalItems(items);
-      await syncRoomSharedItems(items);
       render();
+      await syncRoomSharedItems(items);
     }
 
     function formatItemForCris(item) {
@@ -443,25 +451,46 @@
       return lines.join("\n");
     }
 
+    async function copyTextSafe(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // cai para fallback
+        }
+      }
+      try {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        const ok = document.execCommand("copy");
+        area.remove();
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+
     async function addItemToCris(item) {
       const formatted = formatItemForCris(item);
-      try {
-        await navigator.clipboard.writeText(formatted);
-      } catch {
-        const area = document.createElement("textarea");
-        area.value = formatted;
-        document.body.appendChild(area);
-        area.select();
-        document.execCommand("copy");
-        area.remove();
-      }
+      const copied = await copyTextSafe(formatted);
 
       const crisUrl = el.crisUrlInput.value.trim();
       if (crisUrl) {
         window.open(crisUrl, "_blank", "noopener,noreferrer");
+      }
+
+      if (copied && crisUrl) {
         showToast(`"${item.name}" copiado para o CRIS e ficha aberta!`);
-      } else {
+      } else if (copied) {
         showToast(`"${item.name}" copiado! Cole na sua ficha do CRIS.`);
+      } else {
+        showToast(`Não foi possível copiar automaticamente "${item.name}".`);
       }
     }
 
@@ -569,9 +598,11 @@
         .join("");
     }
 
-    // Eventos da UI
+    // Registra todos os eventos imediatamente (sem depender do SDK)
     el.saveCrisUrlBtn.addEventListener("click", () => {
-      localStorage.setItem(LOCAL_CRIS_URL_KEY, el.crisUrlInput.value.trim());
+      try {
+        localStorage.setItem(LOCAL_CRIS_URL_KEY, el.crisUrlInput.value.trim());
+      } catch {}
       showToast("Link da ficha do CRIS salvo!");
     });
 
@@ -596,8 +627,12 @@
       }
 
       const existingId = el.editIdInput.value;
+      const newId =
+        existingId ||
+        (crypto.randomUUID ? crypto.randomUUID() : `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
+
       const payload = {
-        id: existingId || crypto.randomUUID(),
+        id: newId,
         name,
         weight: el.weightInput.value.trim(),
         category: el.categoryInput.value,
@@ -677,36 +712,47 @@
       }
     });
 
-    // Inicialização
-    el.crisUrlInput.value = localStorage.getItem(LOCAL_CRIS_URL_KEY) || "";
+    // Render inicial imediato
+    try {
+      el.crisUrlInput.value = localStorage.getItem(LOCAL_CRIS_URL_KEY) || "";
+    } catch {}
     items = loadLocalItems();
     render();
 
-    try {
-      await OBR.onReady();
-      obrReady = true;
-      playerRole = await OBR.player.getRole();
-      el.roleBadge.textContent = playerRole === "GM" ? "Mestre (GM)" : "Jogador";
+    // Conexão com o SDK do Owlbear de forma isolada
+    async function initOwlbear() {
+      try {
+        const mod = await import("https://esm.sh/@owlbear-rodeo/sdk@3.6.1");
+        obr = mod.default;
+        await obr.onReady();
+        obrReady = true;
 
-      if (playerRole !== "GM") {
-        activeTab = "players";
-        const roomMeta = await OBR.room.getMetadata();
-        if (Array.isArray(roomMeta[METADATA_KEY])) {
-          items = roomMeta[METADATA_KEY];
-        }
-        OBR.room.onMetadataChange((metadata) => {
-          if (Array.isArray(metadata[METADATA_KEY])) {
-            items = metadata[METADATA_KEY];
-            render();
+        playerRole = await obr.player.getRole();
+        el.roleBadge.textContent = playerRole === "GM" ? "Mestre (GM)" : "Jogador";
+
+        if (playerRole !== "GM") {
+          activeTab = "players";
+          const roomMeta = await obr.room.getMetadata();
+          if (Array.isArray(roomMeta?.[METADATA_KEY])) {
+            items = roomMeta[METADATA_KEY];
           }
-        });
-      } else {
-        await syncRoomSharedItems(items);
+          obr.room.onMetadataChange((metadata) => {
+            if (Array.isArray(metadata?.[METADATA_KEY])) {
+              items = metadata[METADATA_KEY];
+              render();
+            }
+          });
+        } else {
+          await syncRoomSharedItems(items);
+        }
+        render();
+      } catch (err) {
+        console.warn("SDK do Owlbear não conectado (rodando fallback):", err);
+        el.roleBadge.textContent = "Modo local";
       }
-      render();
-    } catch {
-      el.roleBadge.textContent = "Modo standalone";
     }
+
+    initOwlbear();
   </script>
 </body>
 </html>
