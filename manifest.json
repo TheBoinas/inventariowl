@@ -1,0 +1,22 @@
+{
+  "name": "Inventário & CRIS",
+  "version": "1.1.0",
+  "manifest_version": 1,
+  "description": "Banco de itens para Owlbear Rodeo com envio rápido para a ficha do CRIS.",
+  "author": "TheBoinas",
+  "icon": "https://theboinas.github.io/inventariowl/icon.svg",
+  "background_url": "https://theboinas.github.io/inventariowl/background.html",
+  "action": {
+    "title": "Inventário",
+    "icon": "https://theboinas.github.io/inventariowl/icon.svg",
+    "popover": "https://theboinas.github.io/inventariowl/index.html",
+    "width": 460,
+    "height": 640
+  },
+  "permissions": [
+    {
+      "name": "clipboard-write",
+      "reason": "Copiar o nome, atributos e descrição do item formatados para colar no CRIS."
+    }
+  ]
+}
